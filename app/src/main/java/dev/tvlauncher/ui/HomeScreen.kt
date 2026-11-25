@@ -194,7 +194,7 @@ fun HomeScreen(
 
         Column(
             Modifier.align(Alignment.BottomStart).padding(start = Layout.ContentStart, bottom = 56.dp),
-            verticalArrangement = Arrangement.spacedBy(22.dp),
+            verticalArrangement = Arrangement.spacedBy(34.dp),
         ) {
             Text(
                 "FAVORITAS", color = Palette.Muted, fontSize = 20.sp,
