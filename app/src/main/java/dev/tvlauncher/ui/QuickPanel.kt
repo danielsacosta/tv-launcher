@@ -42,7 +42,7 @@ private data class Tile(val label: String, val value: String, val icon: ImageVec
 
 /** Panel que se desliza desde la derecha, como el de Google TV. */
 @Composable
-fun QuickPanel(settings: LauncherSettings, onClose: () -> Unit) {
+fun QuickPanel(settings: LauncherSettings, panelModifier: Modifier = Modifier, onClose: () -> Unit) {
     val context = LocalContext.current
     val accent = Color(settings.accent)
     val now = rememberNow()
@@ -62,7 +62,7 @@ fun QuickPanel(settings: LauncherSettings, onClose: () -> Unit) {
 
     Box(Modifier.fillMaxSize().background(Palette.Ground.copy(alpha = 0.72f))) {
         Column(
-            Modifier
+            panelModifier
                 .align(Alignment.CenterEnd)
                 .width(720.dp)
                 .fillMaxHeight()

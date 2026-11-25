@@ -1,6 +1,17 @@
 package dev.tvlauncher.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -38,6 +49,7 @@ fun LauncherApp(repo: AppRepository, prefs: Prefs, homePresses: StateFlow<Int>) 
     }
 }
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 private fun LauncherContent(repo: AppRepository, prefs: Prefs, homePresses: StateFlow<Int>) {
     val apps by repo.apps.collectAsState()
@@ -78,47 +90,71 @@ private fun LauncherContent(repo: AppRepository, prefs: Prefs, homePresses: Stat
         prefs.setFavorites(list)
     }
 
-    when (screen) {
-        Screen.Home, Screen.QuickPanel -> {
-            HomeScreen(
-                favorites = favorites,
-                allApps = apps,
-                nowPlaying = nowPlaying,
-                recent = recent,
-                settings = settings,
-                focusedPkg = focusedPkg,
-                onFocusApp = { focusedPkg = it },
-                focusTrigger = focusTrigger,
-                onOpenApp = ::open,
-                onNavigate = { screen = it },
-            )
-            if (screen == Screen.QuickPanel) QuickPanel(settings) { screen = Screen.Home }
-        }
-        Screen.Apps -> AppsScreen(
-            apps = visible,
-            hiddenApps = apps.filter { it.packageName in hidden },
-            favorites = favoriteIds,
-            accent = accent,
-            onOpen = ::open,
-            onToggleFavorite = { pkg -> editFavorites { if (pkg in it) it.remove(pkg) else it.add(pkg) } },
-            onMove = { pkg, dir ->
-                editFavorites {
-                    val i = it.indexOf(pkg)
-                    val j = (i + dir).coerceIn(0, it.lastIndex)
-                    if (i >= 0 && i != j) { it.removeAt(i); it.add(j, pkg) }
-                }
+    CompositionLocalProvider(LocalAccent provides accent) {
+        // El panel rápido se dibuja encima del inicio; las demás vistas se reemplazan con un fundido suave.
+        val base = if (screen == Screen.QuickPanel) Screen.Home else screen
+        AnimatedContent(
+            targetState = base,
+            transitionSpec = {
+                (fadeIn(tween(220, easing = FastOutSlowInEasing)) +
+                    scaleIn(tween(220, easing = FastOutSlowInEasing), initialScale = 0.985f)) togetherWith
+                    fadeOut(tween(140))
             },
-            onHide = { pkg -> prefs.setHidden(hidden + pkg) },
-            onUnhide = { pkg -> prefs.setHidden(hidden - pkg) },
-            onNavigate = { screen = it },
-        )
-        Screen.Search -> SearchScreen(visible, accent, ::open) { screen = it }
-        Screen.Inputs -> InputsScreen(accent) { screen = it }
-        Screen.Settings -> SettingsScreen(settings, hasMediaAccess, prefs::updateSettings) { screen = it }
-        Screen.NowPlaying -> NowPlayingScreen(
-            np = nowPlaying,
-            app = nowPlaying?.let { np -> apps.firstOrNull { it.packageName == np.packageName } },
-            accent = accent,
-        ) { screen = Screen.Home }
+            label = "screens",
+        ) { s ->
+            when (s) {
+                Screen.Home, Screen.QuickPanel -> HomeScreen(
+                    favorites = favorites,
+                    allApps = apps,
+                    nowPlaying = nowPlaying,
+                    recent = recent,
+                    settings = settings,
+                    focusedPkg = focusedPkg,
+                    onFocusApp = { focusedPkg = it },
+                    focusTrigger = focusTrigger,
+                    onOpenApp = ::open,
+                    onNavigate = { screen = it },
+                )
+                Screen.Apps -> AppsScreen(
+                    apps = visible,
+                    hiddenApps = apps.filter { it.packageName in hidden },
+                    favorites = favoriteIds,
+                    accent = accent,
+                    onOpen = ::open,
+                    onToggleFavorite = { pkg -> editFavorites { if (pkg in it) it.remove(pkg) else it.add(pkg) } },
+                    onMove = { pkg, dir ->
+                        editFavorites {
+                            val i = it.indexOf(pkg)
+                            val j = (i + dir).coerceIn(0, it.lastIndex)
+                            if (i >= 0 && i != j) { it.removeAt(i); it.add(j, pkg) }
+                        }
+                    },
+                    onHide = { pkg -> prefs.setHidden(hidden + pkg) },
+                    onUnhide = { pkg -> prefs.setHidden(hidden - pkg) },
+                    onNavigate = { screen = it },
+                )
+                Screen.Search -> SearchScreen(visible, accent, ::open) { screen = it }
+                Screen.Inputs -> InputsScreen(accent) { screen = it }
+                Screen.Settings -> SettingsScreen(settings, hasMediaAccess, prefs::updateSettings) { screen = it }
+                Screen.NowPlaying -> NowPlayingScreen(
+                    np = nowPlaying,
+                    app = nowPlaying?.let { np -> apps.firstOrNull { it.packageName == np.owner } },
+                    accent = accent,
+                ) { screen = Screen.Home }
+            }
+        }
+        AnimatedVisibility(
+            visible = screen == Screen.QuickPanel,
+            enter = fadeIn(tween(180)),
+            exit = fadeOut(tween(160)),
+        ) {
+            QuickPanel(
+                settings = settings,
+                panelModifier = Modifier.animateEnterExit(
+                    enter = slideInHorizontally(tween(240, easing = FastOutSlowInEasing)) { it / 4 },
+                    exit = slideOutHorizontally(tween(180)) { it / 4 },
+                ),
+            ) { screen = Screen.Home }
+        }
     }
 }

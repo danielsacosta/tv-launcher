@@ -100,9 +100,12 @@ object IconRenderer {
     }
 
     private fun trimmedBounds(bmp: Bitmap): Rect {
-        var left = bmp.width; var top = bmp.height; var right = -1; var bottom = -1
-        for (y in 0 until bmp.height) for (x in 0 until bmp.width) {
-            if (Color.alpha(bmp.getPixel(x, y)) > 16) {
+        // Se leen todos los píxeles de una vez: mucho más rápido que getPixel uno por uno.
+        val w = bmp.width
+        val px = IntArray(w * bmp.height).also { bmp.getPixels(it, 0, w, 0, 0, w, bmp.height) }
+        var left = w; var top = bmp.height; var right = -1; var bottom = -1
+        for (y in 0 until bmp.height) for (x in 0 until w) {
+            if ((px[y * w + x] ushr 24) > 16) {
                 if (x < left) left = x
                 if (x > right) right = x
                 if (y < top) top = y

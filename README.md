@@ -17,9 +17,14 @@ Hecho en Kotlin con Jetpack Compose, pensado para 1920×1080 y control remoto.
 
 ## Compilar e instalar
 
+Usa la versión optimizada: la de depuración tarda unos 6 s en mostrar el inicio, esta menos de 1 s.
+
 ```bash
-./gradlew assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleRelease
+```
+
+```bash
+adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
 Permiso para leer lo que suena (una sola vez):

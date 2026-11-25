@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -133,10 +134,15 @@ fun Modifier.heroFade(leftStops: List<Pair<Float, Float>>, bottomStops: List<Pai
     }
 
 /** Aro de foco de 3 px separado 5 px del elemento, dibujado por fuera para no encoger el contenido. */
-fun Modifier.focusRing(focused: Boolean, accent: Color, pill: Boolean): Modifier = drawBehind {
-    if (!focused) return@drawBehind
-    val gap = 6.dp.toPx()
+fun Modifier.focusRing(focused: Boolean, accent: Color, pill: Boolean): Modifier =
+    focusRing(if (focused) 1f else 0f, accent, pill)
+
+/** Igual que el anterior, pero con [progress] de 0 a 1 para que el aro aparezca suavemente. */
+fun Modifier.focusRing(progress: Float, accent: Color, pill: Boolean): Modifier = drawBehind {
+    if (progress <= 0.01f) return@drawBehind
+    val gap = 6.dp.toPx() * progress
     val w = 3.dp.toPx()
+    val accent = accent.copy(alpha = accent.alpha * progress)
     val inset = gap + w / 2
     if (pill) {
         drawRoundRect(
@@ -195,24 +201,35 @@ fun Rail(selected: Screen, onSelect: (Screen) -> Unit, modifier: Modifier = Modi
 private fun RailButton(item: RailItem, selected: Boolean, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val bg by animateColorAsState(
-        when {
-            focused -> Palette.Text
-            selected -> Palette.Active
-            else -> Color.Transparent
-        }, label = "railBg",
-    )
-    val fg = if (focused || selected) Palette.Ground else Palette.Icon
-    Box(
-        Modifier
-            .size(56.dp)
-            .scale(if (focused) 1.08f else 1f)
-            .clip(CircleShape)
-            .background(bg)
-            .tvClickable(interaction, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(item.icon, contentDescription = item.label, tint = fg, modifier = Modifier.size(26.dp))
+    val accent = LocalAccent.current
+    // Solo el elemento enfocado lleva fondo blanco. La vista actual se marca con una barrita de acento.
+    val f by animateFloatAsState(if (focused) 1f else 0f, Motion.fast, label = "railFocus")
+    val sel by animateFloatAsState(if (selected && !focused) 1f else 0f, Motion.medium, label = "railSel")
+    val fg = when {
+        focused -> Palette.Ground
+        selected -> Palette.Text
+        else -> Palette.Icon
+    }
+    Box(contentAlignment = Alignment.CenterStart) {
+        Box(
+            Modifier
+                .offset(x = (-16).dp)
+                .size(width = 4.dp, height = 24.dp)
+                .graphicsLayer { alpha = sel; scaleY = 0.4f + 0.6f * sel }
+                .clip(RoundedCornerShape(2.dp))
+                .background(accent),
+        )
+        Box(
+            Modifier
+                .size(56.dp)
+                .graphicsLayer { scaleX = 1f + 0.08f * f; scaleY = 1f + 0.08f * f }
+                .clip(CircleShape)
+                .background(Palette.Text.copy(alpha = f))
+                .tvClickable(interaction, onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(item.icon, contentDescription = item.label, tint = fg, modifier = Modifier.size(26.dp))
+        }
     }
 }
 
@@ -230,7 +247,8 @@ fun AppCircle(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val scale by animateFloatAsState(if (focused) 1.1f else 1f, tween(150), label = "appScale")
+    val f by animateFloatAsState(if (focused) 1f else 0f, Motion.fast, label = "appFocus")
+    val scale = 1f + 0.1f * f
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Box(
             Modifier
@@ -238,7 +256,7 @@ fun AppCircle(
                 .scale(scale)
                 .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
                 .onFocusChanged { if (it.isFocused) onFocused() }
-                .focusRing(focused, accent, pill = false)
+                .focusRing(f, accent, pill = false)
                 .shadow(if (focused) 28.dp else 14.dp, CircleShape, ambientColor = accent, spotColor = if (focused) accent else Color.Black)
                 .clip(CircleShape)
                 .tvClickable(interaction, onLongClick, onClick),
@@ -274,13 +292,14 @@ fun PillButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val bg = if (primary || focused) Palette.Text else Color(0x24FFFFFF)
+    val f by animateFloatAsState(if (focused) 1f else 0f, Motion.fast, label = "pillFocus")
+    val bg by animateColorAsState(if (primary || focused) Palette.Text else Color(0x24FFFFFF), Motion.colorFast, label = "pillBg")
     val fg = if (primary || focused) Palette.Ground else Palette.Text
     Row(
         modifier
-            .scale(if (focused) 1.05f else 1f)
+            .graphicsLayer { scaleX = 1f + 0.05f * f; scaleY = 1f + 0.05f * f }
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .focusRing(focused, accent, pill = true)
+            .focusRing(f, accent, pill = true)
             .clip(RoundedCornerShape(30.dp))
             .background(bg)
             .tvClickable(interaction, onClick = onClick)
@@ -306,18 +325,21 @@ fun RoundButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val bg = when {
-        filled -> Color.White
-        focused -> Palette.Text
-        else -> Color(0x24FFFFFF)
-    }
+    val f by animateFloatAsState(if (focused) 1f else 0f, Motion.fast, label = "roundFocus")
+    val bg by animateColorAsState(
+        when {
+            filled -> Color.White
+            focused -> Palette.Text
+            else -> Color(0x24FFFFFF)
+        }, Motion.colorFast, label = "roundBg",
+    )
     val fg = if (filled || focused) Palette.Ground else Palette.Text
     Box(
         Modifier
             .size(size)
-            .scale(if (focused) 1.08f else 1f)
+            .graphicsLayer { scaleX = 1f + 0.08f * f; scaleY = 1f + 0.08f * f }
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .focusRing(focused, accent, pill = false)
+            .focusRing(f, accent, pill = false)
             .clip(CircleShape)
             .background(bg)
             .tvClickable(interaction, onClick = onClick),

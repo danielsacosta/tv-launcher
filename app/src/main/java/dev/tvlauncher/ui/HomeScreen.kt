@@ -44,6 +44,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,6 +56,9 @@ import dev.tvlauncher.data.LauncherSettings
 import dev.tvlauncher.media.MediaRepo
 import dev.tvlauncher.media.NowPlaying
 import kotlinx.coroutines.delay
+
+/** Sombra suave para textos que van sobre imágenes. */
+private val SoftShadow = Shadow(Color.Black.copy(alpha = 0.55f), blurRadius = 18f)
 
 /** Lo que muestra el hero según la app enfocada. */
 private data class Hero(
@@ -104,11 +109,15 @@ fun HomeScreen(
     }
     LaunchedEffect(focusTrigger, requesters) {
         if (requesters.isEmpty()) return@LaunchedEffect
-        delay(60)
         val target = nowPlaying?.takeIf { it.isPlaying }?.owner?.takeIf { it in requesters }
             ?: focusedPkg?.takeIf { it in requesters }
             ?: favorites.first().packageName
-        runCatching { requesters.getValue(target).requestFocus() }
+        // Se pide dos veces: al volver de otra app, Android puede devolver el foco al último
+        // elemento enfocado (a veces el menú) justo después del primer intento.
+        for (wait in listOf(80L, 320L)) {
+            delay(wait)
+            runCatching { requesters.getValue(target).requestFocus() }
+        }
     }
 
     val tint by animateColorAsState(hero.tint, tween(600), label = "tint")
@@ -150,13 +159,27 @@ fun HomeScreen(
             modifier = Modifier.padding(start = 96.dp, top = 54.dp, bottom = 54.dp),
         )
 
+        // Velo suave detrás del reloj para que se lea sobre portadas claras.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        0f to Palette.Ground.copy(alpha = 0.7f),
+                        0.45f to Palette.Ground.copy(alpha = 0.35f),
+                        1f to Color.Transparent,
+                        center = Offset(1640f, 70f),
+                        radius = 560f,
+                    )
+                )
+        )
         Row(
             Modifier.align(Alignment.TopEnd).padding(top = 54.dp, end = 96.dp),
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(formatDate(now), color = Palette.Icon, fontSize = 22.sp, fontWeight = FontWeight.Medium)
-            Text(formatTime(now, settings.clock24h), color = Palette.Text, fontSize = 44.sp, letterSpacing = (-1).sp)
+            Text(formatDate(now), color = Palette.TextSoft, fontSize = 22.sp, fontWeight = FontWeight.Medium, style = TextStyle(shadow = SoftShadow))
+            Text(formatTime(now, settings.clock24h), color = Palette.Text, fontSize = 44.sp, letterSpacing = (-1).sp, style = TextStyle(shadow = SoftShadow))
         }
 
         HeroText(

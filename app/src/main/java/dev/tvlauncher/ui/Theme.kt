@@ -1,5 +1,8 @@
 package dev.tvlauncher.ui
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -22,6 +25,19 @@ object Palette {
     val Active = Color(0xEBF2F4F7)         // blanco al 92 %
     val Chip = Color(0x1AFFFFFF)
     val Accents = listOf(0xFF7AA2FF, 0xFFF2F4F7, 0xFF9BE3C4, 0xFFF5B971)
+}
+
+/** Color de acento elegido en Ajustes, disponible en toda la interfaz. */
+val LocalAccent = staticCompositionLocalOf { Color(0xFF7AA2FF) }
+
+/**
+ * Animaciones del launcher: cortas y solo sobre propiedades baratas (opacidad, escala,
+ * desplazamiento, color). Nada de desenfoques animados ni relayouts.
+ */
+object Motion {
+    val fast = tween<Float>(durationMillis = 140, easing = FastOutSlowInEasing)
+    val medium = tween<Float>(durationMillis = 220, easing = FastOutSlowInEasing)
+    val colorFast = tween<Color>(durationMillis = 140, easing = FastOutSlowInEasing)
 }
 
 /** Íconos de línea (24×24, trazo 1.8) — los mismos del diseño. */
