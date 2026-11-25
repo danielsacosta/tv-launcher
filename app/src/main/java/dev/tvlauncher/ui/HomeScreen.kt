@@ -1,6 +1,7 @@
 package dev.tvlauncher.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -42,6 +43,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Shadow
@@ -120,38 +123,42 @@ fun HomeScreen(
         }
     }
 
-    val tint by animateColorAsState(hero.tint, tween(600), label = "tint")
-
     Box(Modifier.fillMaxSize().background(Palette.Ground)) {
-        // Tinte del fondo con el color de la portada o del ícono.
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.radialGradient(
-                    listOf(tint.copy(alpha = 0.42f), Color.Transparent),
-                    center = Offset(1350f, 380f),
-                    radius = 1400f,
-                )
-            )
-        )
-
+        // Cada hero (tinte + portada con sus difuminados) es una capa que se pinta UNA sola vez.
+        // Al cambiar de app o de canción solo se funden dos capas ya pintadas: es barato incluso
+        // en la GPU de gama baja de este TV, donde volver a pintar el fondo costaba ~200 ms por cuadro.
         AnimatedContent(
             targetState = hero,
-            transitionSpec = { fadeIn(tween(450)) togetherWith fadeOut(tween(450)) },
+            transitionSpec = { Motion.artEnter togetherWith Motion.artExit },
             contentKey = { it.key },
-            label = "heroArt",
-            modifier = Modifier.align(Alignment.TopEnd),
-        ) { h -> HeroArt(h, settings.abstractWallpaper) }
+            label = "heroBackdrop",
+        ) { h -> HeroBackdrop(h, settings.abstractWallpaper) }
 
-        // Sombra suave detrás del texto para que siempre se lea.
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.radialGradient(
-                    listOf(Palette.Ground.copy(alpha = 0.55f), Color.Transparent),
-                    center = Offset(420f, 410f),
-                    radius = 1000f,
+        // Velos fijos para que el texto y el reloj siempre se lean; también en su propia capa.
+        Box(Modifier.fillMaxSize().graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)) {
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.radialGradient(
+                        listOf(Palette.Ground.copy(alpha = 0.55f), Color.Transparent),
+                        center = Offset(420f, 410f),
+                        radius = 1000f,
+                    )
                 )
             )
-        )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.radialGradient(
+                            0f to Palette.Ground.copy(alpha = 0.7f),
+                            0.45f to Palette.Ground.copy(alpha = 0.35f),
+                            1f to Color.Transparent,
+                            center = Offset(1640f, 70f),
+                            radius = 560f,
+                        )
+                    )
+            )
+        }
 
         Rail(
             selected = Screen.Home,
@@ -159,20 +166,6 @@ fun HomeScreen(
             modifier = Modifier.padding(start = Layout.RailStart, top = 54.dp, bottom = 54.dp),
         )
 
-        // Velo suave detrás del reloj para que se lea sobre portadas claras.
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        0f to Palette.Ground.copy(alpha = 0.7f),
-                        0.45f to Palette.Ground.copy(alpha = 0.35f),
-                        1f to Color.Transparent,
-                        center = Offset(1640f, 70f),
-                        radius = 560f,
-                    )
-                )
-        )
         Row(
             Modifier.align(Alignment.TopEnd).padding(top = 54.dp, end = 96.dp),
             verticalAlignment = Alignment.Bottom,
@@ -263,6 +256,23 @@ private fun buildHero(
 }
 
 @Composable
+private fun HeroBackdrop(h: Hero, abstract: Boolean) {
+    Box(Modifier.fillMaxSize().graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)) {
+        // Tinte del fondo con el color de la portada o del ícono.
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.radialGradient(
+                    listOf(h.tint.copy(alpha = 0.42f), Color.Transparent),
+                    center = Offset(1350f, 380f),
+                    radius = 1400f,
+                )
+            )
+        )
+        Box(Modifier.align(Alignment.TopEnd)) { HeroArt(h, abstract) }
+    }
+}
+
+@Composable
 private fun HeroArt(h: Hero, abstract: Boolean) {
     if (h.art != null) {
         // Portada: fondo hecho con la misma portada desenfocada + portada nítida, todo fundido.
@@ -308,31 +318,42 @@ private fun HeroArt(h: Hero, abstract: Boolean) {
 }
 
 @Composable
-private fun HeroText(hero: Hero, accent: Color, onPrimary: () -> Unit, modifier: Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(28.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                hero.icon?.let {
-                    Image(it, null, modifier = Modifier.size(34.dp).clip(CircleShape))
-                }
-                Text(
-                    hero.eyebrow.uppercase(SpanishCo), color = Palette.TextSoft, fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp, maxLines = 1,
-                )
+private fun HeroTitles(hero: Hero) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            hero.icon?.let {
+                Image(it, null, modifier = Modifier.size(34.dp).clip(CircleShape))
             }
             Text(
-                hero.title,
-                color = Palette.Text,
-                fontSize = if (hero.title.length > 18) 80.sp else 96.sp,
-                lineHeight = if (hero.title.length > 18) 84.sp else 98.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = (-2).sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                hero.eyebrow.uppercase(SpanishCo), color = Palette.TextSoft, fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp, maxLines = 1,
             )
-            hero.line1?.let { Text(it, color = Palette.TextSoft, fontSize = 30.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-            hero.line2?.let { Text(it, color = Palette.Muted, fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
+        Text(
+            hero.title,
+            color = Palette.Text,
+            fontSize = if (hero.title.length > 18) 80.sp else 96.sp,
+            lineHeight = if (hero.title.length > 18) 84.sp else 98.sp,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = (-2).sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        hero.line1?.let { Text(it, color = Palette.TextSoft, fontSize = 30.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        hero.line2?.let { Text(it, color = Palette.Muted, fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+    }
+}
+
+@Composable
+private fun HeroText(hero: Hero, accent: Color, onPrimary: () -> Unit, modifier: Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(28.dp)) {
+        // Solo el texto cambia con transición: la barra y los botones se quedan quietos para no perder el foco.
+        AnimatedContent(
+            targetState = hero,
+            contentKey = { it.key },
+            transitionSpec = { (Motion.textEnter togetherWith Motion.textExit).using(SizeTransform(clip = false)) },
+            label = "heroText",
+        ) { h -> HeroTitles(h) }
         hero.music?.takeIf { it.live && it.durationMs > 0 }?.let { Progress(it) }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             PillButton(
@@ -354,7 +375,7 @@ private fun HeroText(hero: Hero, accent: Color, onPrimary: () -> Unit, modifier:
 fun Progress(np: NowPlaying, width: Int = 460, height: Int = 6) {
     var tick by remember { mutableLongStateOf(0L) }
     LaunchedEffect(np.isPlaying, np.measuredAt) {
-        while (np.isPlaying) { delay(500); tick++ }
+        while (np.isPlaying) { delay(1000); tick++ }
     }
     @Suppress("UNUSED_EXPRESSION") tick
     val pos = np.currentPosition()

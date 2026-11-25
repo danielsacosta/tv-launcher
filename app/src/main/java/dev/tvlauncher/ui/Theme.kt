@@ -1,6 +1,11 @@
 package dev.tvlauncher.ui
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -46,6 +51,17 @@ object Motion {
     val fast = tween<Float>(durationMillis = 140, easing = FastOutSlowInEasing)
     val medium = tween<Float>(durationMillis = 220, easing = FastOutSlowInEasing)
     val colorFast = tween<Color>(durationMillis = 140, easing = FastOutSlowInEasing)
+
+    /**
+     * Cambio de canción: la portada nueva aparece encima y la anterior se va un poco después
+     * (así no hay un "bajón" oscuro a mitad del fundido); el texto se funde. Solo fundidos:
+     * en una GPU lenta siguen viéndose suaves aunque haya pocos cuadros, a diferencia de los
+     * desplazamientos o acercamientos, que se notan a saltos.
+     */
+    val artEnter: EnterTransition = fadeIn(tween(520, easing = LinearOutSlowInEasing))
+    val artExit: ExitTransition = fadeOut(tween(320, delayMillis = 200))
+    val textEnter: EnterTransition = fadeIn(tween(360, delayMillis = 180, easing = LinearOutSlowInEasing))
+    val textExit: ExitTransition = fadeOut(tween(140))
 }
 
 /** Íconos de línea (24×24, trazo 1.8) — los mismos del diseño. */

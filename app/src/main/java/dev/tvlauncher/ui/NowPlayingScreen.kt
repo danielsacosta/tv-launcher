@@ -1,5 +1,11 @@
 package dev.tvlauncher.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -54,11 +60,18 @@ fun NowPlayingScreen(np: NowPlaying?, app: AppInfo?, accent: Color, onBack: () -
         }
 
         // Fondo: la misma portada ampliada y muy desenfocada.
-        np.art?.let {
-            Image(
-                it, null, contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().scale(1.25f).blur(110.dp).alpha(0.6f),
-            )
+        AnimatedContent(
+            targetState = np,
+            contentKey = { trackKey(it) },
+            transitionSpec = { fadeIn(tween(700)) togetherWith fadeOut(tween(450, delayMillis = 250)) },
+            label = "npBackground",
+        ) { t ->
+            t.art?.let {
+                Image(
+                    it, null, contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().scale(1.25f).blur(110.dp).alpha(0.6f),
+                )
+            }
         }
         Box(
             Modifier.fillMaxSize().background(
@@ -94,6 +107,12 @@ fun NowPlayingScreen(np: NowPlaying?, app: AppInfo?, accent: Color, onBack: () -
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(112.dp),
         ) {
+            AnimatedContent(
+                targetState = np,
+                contentKey = { trackKey(it) },
+                transitionSpec = { (Motion.artEnter togetherWith Motion.artExit).using(SizeTransform(clip = false)) },
+                label = "npCover",
+            ) { np ->
             Box(Modifier.size(640.dp)) {
                 np.art?.let {
                     Image(
@@ -109,21 +128,31 @@ fun NowPlayingScreen(np: NowPlaying?, app: AppInfo?, accent: Color, onBack: () -
                     contentAlignment = Alignment.Center,
                 ) { Icon(Icons.Note, null, tint = Palette.Muted, modifier = Modifier.size(120.dp)) }
             }
+            }
 
             Column(Modifier.width(860.dp), verticalArrangement = Arrangement.spacedBy(52.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        if (np.isPlaying) "SONANDO AHORA" else "EN PAUSA",
-                        color = Palette.Icon, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp,
-                    )
-                    Text(
-                        np.title, color = Palette.Text,
-                        fontSize = if (np.title.length > 18) 80.sp else 104.sp,
-                        lineHeight = if (np.title.length > 18) 84.sp else 102.sp,
-                        fontWeight = FontWeight.Medium, letterSpacing = (-3).sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    )
-                    np.artist?.let { Text(it, color = Palette.TextSoft, fontSize = 36.sp, fontWeight = FontWeight.Medium, maxLines = 1) }
-                    np.album?.takeIf { it != np.artist }?.let { Text(it, color = Palette.Muted, fontSize = 24.sp, maxLines = 1) }
+                Text(
+                    if (np.isPlaying) "SONANDO AHORA" else "EN PAUSA",
+                    color = Palette.Icon, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp,
+                )
+                AnimatedContent(
+                    targetState = np,
+                    contentKey = { trackKey(it) },
+                    transitionSpec = { (Motion.textEnter togetherWith Motion.textExit).using(SizeTransform(clip = false)) },
+                    label = "npText",
+                ) { np ->
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text(
+                            np.title, color = Palette.Text,
+                            fontSize = if (np.title.length > 18) 80.sp else 104.sp,
+                            lineHeight = if (np.title.length > 18) 84.sp else 102.sp,
+                            fontWeight = FontWeight.Medium, letterSpacing = (-3).sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        )
+                        np.artist?.let { Text(it, color = Palette.TextSoft, fontSize = 36.sp, fontWeight = FontWeight.Medium, maxLines = 1) }
+                        np.album?.takeIf { it != np.artist }?.let { Text(it, color = Palette.Muted, fontSize = 24.sp, maxLines = 1) }
+                    }
+                }
                 }
                 Progress(np, width = 620, height = 8)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.dp)) {
@@ -139,3 +168,5 @@ fun NowPlayingScreen(np: NowPlaying?, app: AppInfo?, accent: Color, onBack: () -
         }
     }
 }
+
+private fun trackKey(np: NowPlaying) = "${np.packageName}|${np.title}|${np.artist}"

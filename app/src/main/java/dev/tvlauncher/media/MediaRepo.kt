@@ -75,6 +75,12 @@ object MediaRepo {
     private var current: MediaController? = null
     private var currentOwner: String? = null
     private var lastArt: Bitmap? = null
+
+    // Entre canciones Spotify manda metadatos vacíos o el título antes que la portada. Se espera
+    // un momento para que el cambio sea un solo fundido y no "vacío → texto → portada".
+    private var clearPending = false
+    private val clearLater = Runnable { clearPending = false; _nowPlaying.value = null }
+    private val publishLater = Runnable { publish(force = true) }
     private var lastTint: Int? = null
 
     private val sessionsListener = MediaSessionManager.OnActiveSessionsChangedListener { list ->
@@ -132,18 +138,39 @@ object MediaRepo {
         publish()
     }
 
-    private fun publish() {
+    private fun publish(force: Boolean = false) {
         val c = current
         val md = c?.metadata
         val title = md?.getString(MediaMetadata.METADATA_KEY_TITLE)
             ?: md?.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
         if (c == null || md == null || title.isNullOrBlank()) {
-            _nowPlaying.value = null
+            main.removeCallbacks(publishLater)
+            if (c == null || _nowPlaying.value == null) {
+                main.removeCallbacks(clearLater)
+                clearPending = false
+                _nowPlaying.value = null
+            } else if (!clearPending) {
+                clearPending = true
+                main.postDelayed(clearLater, 1500)
+            }
             return
         }
+        main.removeCallbacks(clearLater)
+        clearPending = false
         val art = md.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
             ?: md.getBitmap(MediaMetadata.METADATA_KEY_ART)
             ?: md.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
+        val prev = _nowPlaying.value
+        val newTrack = prev != null && prev.packageName == c.packageName && prev.title != title
+        val artIsStale = art == null || lastArt?.let { art === it || art.sameAs(it) } == true
+        if (!force && newTrack) {
+            // Se publica cuando el cambio se asienta (Spotify a veces asoma otra canción un instante)
+            // y, si la portada aún es la vieja o no llegó, se le da un poco más de tiempo.
+            main.removeCallbacks(publishLater)
+            main.postDelayed(publishLater, if (artIsStale) 700 else 400)
+            return
+        }
+        main.removeCallbacks(publishLater)
         if (art !== lastArt) {
             lastArt = art
             lastTint = art?.let { IconRenderer.dominantColor(it.copy(Bitmap.Config.ARGB_8888, false)) }

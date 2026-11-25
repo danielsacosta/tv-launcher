@@ -182,7 +182,6 @@ fun Rail(selected: Screen, onSelect: (Screen) -> Unit, modifier: Modifier = Modi
         modifier
             .width(88.dp)
             .fillMaxHeight()
-            .shadow(24.dp, RoundedCornerShape(44.dp), ambientColor = Color.Black, spotColor = Color.Black)
             .glass(RoundedCornerShape(44.dp))
             .padding(vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -257,8 +256,6 @@ fun AppCircle(
                 .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
                 .onFocusChanged { if (it.isFocused) onFocused() }
                 .focusRing(f, accent, pill = false)
-                // Sombra neutra y corta: el foco lo marca el aro, no un resplandor de color.
-                .shadow(if (focused) 16.dp else 8.dp, CircleShape, ambientColor = Color.Black, spotColor = Color.Black)
                 .clip(CircleShape)
                 .tvClickable(interaction, onLongClick, onClick),
         ) {
