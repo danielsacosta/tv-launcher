@@ -78,9 +78,9 @@ fun InputsScreen(accent: Color, onNavigate: (Screen) -> Unit) {
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
 
     AmbientBackground(accent) {
-        Rail(Screen.Inputs, onNavigate, Modifier.padding(start = 96.dp, top = 54.dp, bottom = 54.dp))
+        Rail(Screen.Inputs, onNavigate, Modifier.padding(start = Layout.RailStart, top = 54.dp, bottom = 54.dp))
         Column(
-            Modifier.fillMaxSize().padding(start = 240.dp, end = 96.dp, top = 54.dp),
+            Modifier.fillMaxSize().padding(start = Layout.ContentStart, end = 96.dp, top = 54.dp),
             verticalArrangement = Arrangement.spacedBy(48.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

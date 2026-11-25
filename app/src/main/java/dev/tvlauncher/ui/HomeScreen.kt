@@ -156,7 +156,7 @@ fun HomeScreen(
         Rail(
             selected = Screen.Home,
             onSelect = onNavigate,
-            modifier = Modifier.padding(start = 96.dp, top = 54.dp, bottom = 54.dp),
+            modifier = Modifier.padding(start = Layout.RailStart, top = 54.dp, bottom = 54.dp),
         )
 
         // Velo suave detrás del reloj para que se lea sobre portadas claras.
@@ -189,11 +189,11 @@ fun HomeScreen(
                 if (hero.music?.live == true) onNavigate(Screen.NowPlaying)
                 else focusedApp?.let { onOpenApp(it.packageName) }
             },
-            modifier = Modifier.padding(start = 240.dp, top = 150.dp).width(900.dp),
+            modifier = Modifier.padding(start = Layout.ContentStart, top = 150.dp).width(900.dp),
         )
 
         Column(
-            Modifier.align(Alignment.BottomStart).padding(start = 240.dp, bottom = 56.dp),
+            Modifier.align(Alignment.BottomStart).padding(start = Layout.ContentStart, bottom = 56.dp),
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
             Text(

@@ -46,9 +46,9 @@ fun SettingsScreen(
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
 
     AmbientBackground(accent) {
-        Rail(Screen.Settings, onNavigate, Modifier.padding(start = 96.dp, top = 54.dp, bottom = 54.dp))
+        Rail(Screen.Settings, onNavigate, Modifier.padding(start = Layout.RailStart, top = 54.dp, bottom = 54.dp))
         Column(
-            Modifier.fillMaxSize().padding(start = 240.dp, end = 240.dp, top = 54.dp),
+            Modifier.fillMaxSize().padding(start = Layout.ContentStart, end = 240.dp, top = 54.dp),
             verticalArrangement = Arrangement.spacedBy(44.dp),
         ) {
             Text("Ajustes", color = Palette.Text, fontSize = 56.sp, fontWeight = FontWeight.Medium, letterSpacing = (-1.5).sp)

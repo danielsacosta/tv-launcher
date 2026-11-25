@@ -59,9 +59,9 @@ fun SearchScreen(
     val matches = if (q.isEmpty()) emptyList() else apps.filter { it.label.contains(q, ignoreCase = true) }
 
     AmbientBackground(accent) {
-        Rail(Screen.Search, onNavigate, Modifier.padding(start = 96.dp, top = 54.dp, bottom = 54.dp))
+        Rail(Screen.Search, onNavigate, Modifier.padding(start = Layout.RailStart, top = 54.dp, bottom = 54.dp))
         Column(
-            Modifier.fillMaxSize().padding(start = 240.dp, end = 240.dp, top = 120.dp),
+            Modifier.fillMaxSize().padding(start = Layout.ContentStart, end = 240.dp, top = 120.dp),
             verticalArrangement = Arrangement.spacedBy(56.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {

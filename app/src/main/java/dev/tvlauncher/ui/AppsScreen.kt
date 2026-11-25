@@ -67,9 +67,9 @@ fun AppsScreen(
     LaunchedEffect(menuFor) { if (menuFor != null) runCatching { menuFocus.requestFocus() } }
 
     AmbientBackground(accent) {
-        Rail(Screen.Apps, onNavigate, Modifier.padding(start = 96.dp, top = 54.dp, bottom = 54.dp))
+        Rail(Screen.Apps, onNavigate, Modifier.padding(start = Layout.RailStart, top = 54.dp, bottom = 54.dp))
         Column(
-            Modifier.fillMaxSize().padding(start = 240.dp, end = 96.dp, top = 54.dp, bottom = 54.dp),
+            Modifier.fillMaxSize().padding(start = Layout.ContentStart, end = 96.dp, top = 54.dp, bottom = 54.dp),
             verticalArrangement = Arrangement.spacedBy(36.dp),
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {

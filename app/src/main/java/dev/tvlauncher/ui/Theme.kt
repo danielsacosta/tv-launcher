@@ -27,6 +27,14 @@ object Palette {
     val Accents = listOf(0xFF7AA2FF, 0xFFF2F4F7, 0xFF9BE3C4, 0xFFF5B971)
 }
 
+/** Márgenes horizontales compartidos por todas las vistas con menú lateral (en px del diseño). */
+object Layout {
+    /** Borde izquierdo del menú lateral. */
+    val RailStart = 40.dp
+    /** Donde empieza el contenido: 64 px después del menú (40 + 88 de ancho + 64). */
+    val ContentStart = 192.dp
+}
+
 /** Color de acento elegido en Ajustes, disponible en toda la interfaz. */
 val LocalAccent = staticCompositionLocalOf { Color(0xFF7AA2FF) }
 
