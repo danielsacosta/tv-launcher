@@ -257,7 +257,8 @@ fun AppCircle(
                 .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
                 .onFocusChanged { if (it.isFocused) onFocused() }
                 .focusRing(f, accent, pill = false)
-                .shadow(if (focused) 28.dp else 14.dp, CircleShape, ambientColor = accent, spotColor = if (focused) accent else Color.Black)
+                // Sombra neutra y corta: el foco lo marca el aro, no un resplandor de color.
+                .shadow(if (focused) 16.dp else 8.dp, CircleShape, ambientColor = Color.Black, spotColor = Color.Black)
                 .clip(CircleShape)
                 .tvClickable(interaction, onLongClick, onClick),
         ) {
