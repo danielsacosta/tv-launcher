@@ -86,6 +86,7 @@ class AppRepository(private val context: Context, private val scope: CoroutineSc
 object KnownApps {
     const val SPOTIFY = "com.spotify.tv.android"
     const val YT_MUSIC = "com.google.android.youtube.tvmusic"
+    const val YOUTUBE = "com.google.android.youtube.tv"
 
     private val defaults = listOf(
         SPOTIFY,

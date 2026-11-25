@@ -28,6 +28,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         MediaRepo.attach(this)
+        // Al regresar de otra app, el inicio vuelve a poner el foco donde corresponde.
+        homePresses.value++
     }
 
     /** Llega cuando se pulsa Home estando ya en el launcher. */

@@ -84,19 +84,32 @@ fun HomeScreen(
     favorites: List<AppInfo>,
     allApps: List<AppInfo>,
     nowPlaying: NowPlaying?,
+    recent: Map<String, NowPlaying>,
     settings: LauncherSettings,
     focusedPkg: String?,
     onFocusApp: (String) -> Unit,
-    firstFocus: FocusRequester,
+    focusTrigger: Int,
     onOpenApp: (String) -> Unit,
     onNavigate: (Screen) -> Unit,
 ) {
     val accent = Color(settings.accent)
     val now = rememberNow()
-    val playing = nowPlaying?.takeIf { settings.showNowPlaying }
 
     val focusedApp = favorites.firstOrNull { it.packageName == focusedPkg } ?: favorites.firstOrNull()
-    val hero = buildHero(focusedApp, playing, allApps)
+    val hero = buildHero(focusedApp, nowPlaying, recent, allApps, settings.showNowPlaying)
+
+    // Al volver al inicio, el foco va a la app que está sonando (si está en Favoritas) o a la primera.
+    val requesters = remember(favorites.map { it.packageName }) {
+        favorites.associate { it.packageName to FocusRequester() }
+    }
+    LaunchedEffect(focusTrigger, requesters) {
+        if (requesters.isEmpty()) return@LaunchedEffect
+        delay(60)
+        val target = nowPlaying?.takeIf { it.isPlaying }?.owner?.takeIf { it in requesters }
+            ?: focusedPkg?.takeIf { it in requesters }
+            ?: favorites.first().packageName
+        runCatching { requesters.getValue(target).requestFocus() }
+    }
 
     val tint by animateColorAsState(hero.tint, tween(600), label = "tint")
 
@@ -150,7 +163,7 @@ fun HomeScreen(
             hero = hero,
             accent = accent,
             onPrimary = {
-                if (hero.music != null) onNavigate(Screen.NowPlaying)
+                if (hero.music?.live == true) onNavigate(Screen.NowPlaying)
                 else focusedApp?.let { onOpenApp(it.packageName) }
             },
             modifier = Modifier.padding(start = 240.dp, top = 150.dp).width(900.dp),
@@ -165,11 +178,11 @@ fun HomeScreen(
                 fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(40.dp)) {
-                favorites.forEachIndexed { i, app ->
+                favorites.forEach { app ->
                     AppCircle(
                         app = app,
                         accent = accent,
-                        focusRequester = if (i == 0) firstFocus else null,
+                        focusRequester = requesters[app.packageName],
                         onFocused = { onFocusApp(app.packageName) },
                         onClick = { onOpenApp(app.packageName) },
                     )
@@ -180,28 +193,37 @@ fun HomeScreen(
     }
 }
 
-private fun buildHero(app: AppInfo?, playing: NowPlaying?, all: List<AppInfo>): Hero {
-    val playingApp = playing?.let { p -> all.firstOrNull { it.packageName == p.packageName } }
-    // La música manda si la app enfocada es la que suena, o si se enfoca otra app de música sin sesión.
-    if (playing != null && (app == null || app.packageName == playing.packageName ||
-            (app.packageName in KnownApps.musicApps && playingApp != null))
-    ) {
-        val label = playingApp?.label ?: "tu app"
-        return Hero(
-            key = "music:${playing.packageName}:${playing.title}",
-            eyebrow = if (playing.isPlaying) "Sonando en $label" else "En pausa · $label",
-            title = playing.title,
-            line1 = playing.artist,
-            line2 = playing.album?.takeIf { it != playing.artist },
-            tint = playing.tint?.let { Color(it) } ?: playingApp?.tint?.let { Color(it) } ?: Palette.Deep,
-            icon = playingApp?.icon,
-            art = playing.art,
-            music = playing,
-            primary = "Abrir reproductor",
-        )
-    }
+private fun buildHero(
+    app: AppInfo?,
+    live: NowPlaying?,
+    recent: Map<String, NowPlaying>,
+    all: List<AppInfo>,
+    showMedia: Boolean,
+): Hero {
     if (app == null) {
         return Hero("empty", "Bienvenido", "Tu TV", null, null, Palette.Deep, null, null, null, "Ver apps")
+    }
+    // Cada app muestra solo lo suyo: lo que suena ahora en ella o, si ya cerró, lo último que se vio.
+    val media = if (!showMedia) null
+    else live?.takeIf { it.owner == app.packageName } ?: recent[app.packageName]
+    if (media != null) {
+        val label = app.label
+        return Hero(
+            key = "media:${media.owner}:${media.title}:${media.live}",
+            eyebrow = when {
+                media.live && media.isPlaying -> "Sonando en $label"
+                media.live -> "En pausa · $label"
+                else -> "Lo último en $label"
+            },
+            title = media.title,
+            line1 = media.artist,
+            line2 = media.album?.takeIf { it != media.artist },
+            tint = media.tint?.let { Color(it) } ?: Color(app.tint),
+            icon = app.icon,
+            art = media.art,
+            music = media,
+            primary = if (media.live) "Abrir reproductor" else "Seguir en $label",
+        )
     }
     return Hero(
         key = "app:${app.packageName}",
@@ -288,16 +310,16 @@ private fun HeroText(hero: Hero, accent: Color, onPrimary: () -> Unit, modifier:
             hero.line1?.let { Text(it, color = Palette.TextSoft, fontSize = 30.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             hero.line2?.let { Text(it, color = Palette.Muted, fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
-        hero.music?.let { Progress(it) }
+        hero.music?.takeIf { it.live && it.durationMs > 0 }?.let { Progress(it) }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             PillButton(
                 text = hero.primary,
-                icon = if (hero.music != null) Icons.Expand else Icons.Play,
+                icon = if (hero.music?.live == true) Icons.Expand else Icons.Play,
                 primary = true,
                 accent = accent,
                 onClick = onPrimary,
             )
-            if (hero.music != null) {
+            if (hero.music?.live == true) {
                 RoundButton(if (hero.music.isPlaying) Icons.Pause else Icons.Play, "Pausar o reproducir", accent) { MediaRepo.playPause() }
                 RoundButton(Icons.Next, "Siguiente", accent) { MediaRepo.next() }
             }

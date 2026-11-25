@@ -8,12 +8,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -21,7 +21,6 @@ import dev.tvlauncher.data.AppRepository
 import dev.tvlauncher.data.KnownApps
 import dev.tvlauncher.data.Prefs
 import dev.tvlauncher.media.MediaRepo
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -46,12 +45,13 @@ private fun LauncherContent(repo: AppRepository, prefs: Prefs, homePresses: Stat
     val hidden by prefs.hidden.collectAsState()
     val settings by prefs.settings.collectAsState()
     val nowPlaying by MediaRepo.nowPlaying.collectAsState()
+    val recent by MediaRepo.recent.collectAsState()
     val hasMediaAccess by MediaRepo.hasAccess.collectAsState()
     val home by homePresses.collectAsState()
 
     var screen by rememberSaveable { mutableStateOf(Screen.Home) }
     var focusedPkg by rememberSaveable { mutableStateOf<String?>(null) }
-    val homeFocus = remember { FocusRequester() }
+    var focusTrigger by remember { mutableIntStateOf(0) }
     val accent = Color(settings.accent)
 
     val visible = apps.filter { it.packageName !in hidden }
@@ -62,14 +62,13 @@ private fun LauncherContent(repo: AppRepository, prefs: Prefs, homePresses: Stat
     LaunchedEffect(home) { screen = Screen.Home }
     BackHandler(enabled = screen != Screen.Home) { screen = Screen.Home }
 
-    LaunchedEffect(screen, favorites.isNotEmpty()) {
-        if (screen == Screen.Home && favorites.isNotEmpty()) {
-            delay(50)
-            runCatching { homeFocus.requestFocus() }
-        }
+    // Cada vez que se vuelve al inicio (Home, Atrás o al regresar de una app) se recoloca el foco.
+    LaunchedEffect(screen, home, favorites.isNotEmpty()) {
+        if (screen == Screen.Home) focusTrigger++
     }
 
     fun open(pkg: String) {
+        MediaRepo.lastLaunched = pkg
         repo.launch(pkg)
     }
 
@@ -85,10 +84,11 @@ private fun LauncherContent(repo: AppRepository, prefs: Prefs, homePresses: Stat
                 favorites = favorites,
                 allApps = apps,
                 nowPlaying = nowPlaying,
+                recent = recent,
                 settings = settings,
                 focusedPkg = focusedPkg,
                 onFocusApp = { focusedPkg = it },
-                firstFocus = homeFocus,
+                focusTrigger = focusTrigger,
                 onOpenApp = ::open,
                 onNavigate = { screen = it },
             )
